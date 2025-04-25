@@ -6,15 +6,17 @@ A lightweight Python library that uses MD5 checksums to track file changes and e
 
 ```mermaid
 flowchart TD
-    A[File to process] --> B{Calculate MD5}
-    B --> C[Current checksum]
-    D[(Checksum cache)] --> E{Compare with cached checksum}
-    C --> E
-    
-    E -->|Different or not in cache| F[Execute code]
-    E -->|Same| G[Skip processing]
-    
-    F --> H[Update cache with new checksum]
+    subgraph "Individual Processing"
+        A[File to process] --> B{Calculate MD5}
+        B --> C[Current checksum]
+        D[(Checksum cache)] --> E{Compare with cached checksum}
+        C --> E
+        
+        E -->|Different or not in cache| F[Execute code]
+        E -->|Same| G[Skip processing]
+        
+        F --> H[Update cache with new checksum]
+    end
     
     style A fill:#f9f9f9,stroke:#333,stroke-width:2px
     style D fill:#c9e6ff,stroke:#0066cc,stroke-width:2px
@@ -22,6 +24,34 @@ flowchart TD
     style G fill:#ffccc7,stroke:#cf1322,stroke-width:2px
 ```
 
+```mermaid
+flowchart TD
+    subgraph "Individual Processing"
+        A1[Input Files] --> B1{Check\nChecksums}
+        B1 -->|Changed| C1[Process\nEach Changed File]
+        B1 -->|Unchanged| D1[Skip\nUnchanged Files]
+        C1 --> E1[Multiple\nOutput Files]
+    end
+    
+    subgraph "Aggregate Processing"
+        A2[Input Files] --> B2{Any File\nChanged?}
+        B2 -->|Yes| C2[Process All Files\nTogether]
+        B2 -->|No| D2[Skip\nProcessing]
+        C2 --> E2[Single\nOutput File]
+    end
+    
+    style A1 fill:#f9f9f9,stroke:#333,stroke-width:2px
+    style A2 fill:#f9f9f9,stroke:#333,stroke-width:2px
+    
+    style C1 fill:#d9f7be,stroke:#389e0d,stroke-width:2px
+    style C2 fill:#d9f7be,stroke:#389e0d,stroke-width:2px
+    
+    style D1 fill:#ffccc7,stroke:#cf1322,stroke-width:2px
+    style D2 fill:#ffccc7,stroke:#cf1322,stroke-width:2px
+    
+    style E1 fill:#b5f5ec,stroke:#13a8a8,stroke-width:2px
+    style E2 fill:#ffd666,stroke:#d48806,stroke-width:2px
+```
 ## Features
 
 - Track changes to files using MD5 checksums
@@ -33,6 +63,7 @@ flowchart TD
 }
 ```
 - Execute functions only when file content has changed
+- Aggregate multiple files into a single output file
 - Batch transform multiple files with automatic output management
 - Full async/await support
 - Works with Python 3.10+
