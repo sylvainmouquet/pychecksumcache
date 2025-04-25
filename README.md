@@ -1,4 +1,4 @@
-**# PyChecksumCache
+# PyChecksumCache
 
 A lightweight Python library that uses MD5 checksums to track file changes and execute code only when files have been modified. PyChecksumCache maintains a persistent cache of file checksums, making it ideal for build systems, asset processors, incremental compilers, and any tools that need efficient change detection.
 
