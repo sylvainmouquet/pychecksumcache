@@ -27,7 +27,7 @@ build: check-version
 #	ls -al
 	./scripts/version.sh "${VERSION}"
 	@cat pyproject.toml | grep version
-	@cat pydocks/__init__.py | grep version
+	@cat pychecksumcache/__init__.py | grep version
 	uv build --python $${PYTHON_VERSION:-3.13}
 
 .PHONY: check-version
