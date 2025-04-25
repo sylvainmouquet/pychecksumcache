@@ -14,7 +14,11 @@ class PyChecksumCache:
     Supports both synchronous and asynchronous operation, and handles both absolute and relative paths consistently.
     """
 
-    def __init__(self, cache_file: Union[str, Path] = "checksum_cache.json", base_dir: Union[str, Path, None] = None):
+    def __init__(
+        self,
+        cache_file: Union[str, Path] = "checksum_cache.json",
+        base_dir: Union[str, Path, None] = None,
+    ):
         """
         Initialize the PyChecksumCache with a cache file to store checksums.
 
@@ -39,7 +43,7 @@ class PyChecksumCache:
             An absolute Path object
         """
         path = Path(file_path)
-        #if not path.is_absolute():
+        # if not path.is_absolute():
         #    path = (self.base_dir / path).resolve()
 
         return path
@@ -61,7 +65,7 @@ class PyChecksumCache:
         cache_path = self._normalize_path(self.cache_file)
         if cache_path.exists():
             try:
-                with open(cache_path, 'r') as f:
+                with open(cache_path, "r") as f:
                     self.checksums = json.load(f)
             except (json.JSONDecodeError, IOError):
                 self.checksums = {}
@@ -73,7 +77,7 @@ class PyChecksumCache:
             cache_path = self._normalize_path(self.cache_file)
             cache_path.parent.mkdir(parents=True, exist_ok=True)
 
-            with open(cache_path, 'w') as f:
+            with open(cache_path, "w") as f:
                 json.dump(self.checksums, f, indent=2)
         except IOError as e:
             logger.warning(f"Warning: Failed to save checksum cache: {e}")
@@ -89,7 +93,9 @@ class PyChecksumCache:
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(
                 None,
-                lambda: open(cache_path, 'w').write(json.dumps(self.checksums, indent=2))
+                lambda: open(cache_path, "w").write(
+                    json.dumps(self.checksums, indent=2)
+                ),
             )
         except IOError as e:
             logger.warning(f"Warning: Failed to save checksum cache: {e}")
@@ -110,9 +116,9 @@ class PyChecksumCache:
 
         md5 = hashlib.md5()
 
-        with open(path, 'rb') as f:
+        with open(path, "rb") as f:
             # Read in chunks to handle large files efficiently
-            for chunk in iter(lambda: f.read(4096), b''):
+            for chunk in iter(lambda: f.read(4096), b""):
                 md5.update(chunk)
 
         return md5.hexdigest()
@@ -139,12 +145,11 @@ class PyChecksumCache:
         file_size = os.path.getsize(path)
         chunk_size = 4096
 
-        with open(path, 'rb') as f:
+        with open(path, "rb") as f:
             for i in range(0, file_size, chunk_size):
                 # Run the file read in executor to avoid blocking
                 chunk = await loop.run_in_executor(
-                    None,
-                    lambda: f.read(min(chunk_size, file_size - i))
+                    None, lambda: f.read(min(chunk_size, file_size - i))
                 )
                 if not chunk:
                     break
@@ -212,7 +217,9 @@ class PyChecksumCache:
                 await self._save_cache_async()
             return False
 
-    def execute_if_changed(self, file_path: Union[str, Path], func: Callable, *args, **kwargs) -> Optional[Any]:
+    def execute_if_changed(
+        self, file_path: Union[str, Path], func: Callable, *args, **kwargs
+    ) -> Optional[Any]:
         """
         Execute the function only if the file has changed.
 
@@ -228,7 +235,9 @@ class PyChecksumCache:
             return func(*args, **kwargs)
         return None
 
-    async def execute_if_changed_async(self, file_path: Union[str, Path], func: Callable, *args, **kwargs) -> Optional[Any]:
+    async def execute_if_changed_async(
+        self, file_path: Union[str, Path], func: Callable, *args, **kwargs
+    ) -> Optional[Any]:
         """
         Execute the function (sync or async) only if the file has changed asynchronously.
 
@@ -246,10 +255,7 @@ class PyChecksumCache:
             else:
                 # Run sync function in executor
                 loop = asyncio.get_event_loop()
-                return await loop.run_in_executor(
-                    None,
-                    lambda: func(*args, **kwargs)
-                )
+                return await loop.run_in_executor(None, lambda: func(*args, **kwargs))
         return None
 
     def any_changed(self, file_list: List[Union[str, Path]]) -> bool:
@@ -310,7 +316,9 @@ class PyChecksumCache:
         # Return True if all files changed
         return all(results)
 
-    def execute_if_any_changed(self, file_list: List[Union[str, Path]], func: Callable, *args, **kwargs) -> Optional[Any]:
+    def execute_if_any_changed(
+        self, file_list: List[Union[str, Path]], func: Callable, *args, **kwargs
+    ) -> Optional[Any]:
         """
         Execute the function if any of the specified files have changed.
 
@@ -326,7 +334,9 @@ class PyChecksumCache:
             return func(*args, **kwargs)
         return None
 
-    async def execute_if_any_changed_async(self, file_list: List[Union[str, Path]], func: Callable, *args, **kwargs) -> Optional[Any]:
+    async def execute_if_any_changed_async(
+        self, file_list: List[Union[str, Path]], func: Callable, *args, **kwargs
+    ) -> Optional[Any]:
         """
         Execute the function if any of the specified files have changed asynchronously.
 
@@ -344,10 +354,7 @@ class PyChecksumCache:
             else:
                 # Run sync function in executor
                 loop = asyncio.get_event_loop()
-                return await loop.run_in_executor(
-                    None,
-                    lambda: func(*args, **kwargs)
-                )
+                return await loop.run_in_executor(None, lambda: func(*args, **kwargs))
         return None
 
     def refresh_cache(self, file_path: Optional[Union[str, Path]] = None) -> None:
@@ -375,7 +382,9 @@ class PyChecksumCache:
 
         self._save_cache()
 
-    async def refresh_cache_async(self, file_path: Optional[Union[str, Path]] = None) -> None:
+    async def refresh_cache_async(
+        self, file_path: Optional[Union[str, Path]] = None
+    ) -> None:
         """
         Recalculate the checksum and update the cache asynchronously.
 
@@ -403,7 +412,7 @@ class PyChecksumCache:
         """Helper method to refresh a single file asynchronously."""
         try:
             self.checksums[file_path] = await self.calculate_md5_async(file_path)
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             logger.info(f"File not found: {file_path}")
             if file_path in self.checksums:
                 del self.checksums[file_path]
@@ -442,12 +451,14 @@ class PyChecksumCache:
             del self.checksums[cache_key]
             await self._save_cache_async()
 
-    def transform(self,
-                  input_files: List[Union[str, Path]],
-                  output_folder: Union[str, Path],
-                  output_extension: str = "",
-                  transform_func: Callable[[str, str], Any] = None,
-                  force: bool = False) -> List[Tuple[Path, bool]]:
+    def transform(
+        self,
+        input_files: List[Union[str, Path]],
+        output_folder: Union[str, Path],
+        output_extension: str = "",
+        transform_func: Callable[[str, str], Any] = None,
+        force: bool = False,
+    ) -> List[Tuple[Path, bool]]:
         """
         Transform input files only if they've changed and save to output folder.
 
@@ -477,7 +488,7 @@ class PyChecksumCache:
 
             # Generate output filename
             if output_extension:
-                if output_extension.startswith('.'):
+                if output_extension.startswith("."):
                     # Replace extension
                     output_filename = input_path.stem + output_extension
                 else:
@@ -499,13 +510,15 @@ class PyChecksumCache:
 
         return results
 
-    async def transform_async(self,
-                              input_files: List[Union[str, Path]],
-                              output_folder: Union[str, Path],
-                              output_extension: str = "",
-                              transform_func: Callable[[str, str], Any] = None,
-                              force: bool = False,
-                              concurrency_limit: int = 10) -> List[Tuple[Path, bool]]:
+    async def transform_async(
+        self,
+        input_files: List[Union[str, Path]],
+        output_folder: Union[str, Path],
+        output_extension: str = "",
+        transform_func: Callable[[str, str], Any] = None,
+        force: bool = False,
+        concurrency_limit: int = 10,
+    ) -> List[Tuple[Path, bool]]:
         """
         Transform input files asynchronously only if they've changed and save to output folder.
 
@@ -538,7 +551,7 @@ class PyChecksumCache:
 
             # Generate output filename
             if output_extension:
-                if output_extension.startswith('.'):
+                if output_extension.startswith("."):
                     # Replace extension
                     output_filename = input_path.stem + output_extension
                 else:
@@ -563,7 +576,7 @@ class PyChecksumCache:
                         loop = asyncio.get_event_loop()
                         await loop.run_in_executor(
                             None,
-                            lambda: transform_func(str(input_path), str(output_file))
+                            lambda: transform_func(str(input_path), str(output_file)),
                         )
 
             return (output_file, needs_processing)
