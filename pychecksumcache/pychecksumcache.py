@@ -14,7 +14,7 @@ class PyChecksumCache:
     Supports both synchronous and asynchronous operation, and handles both absolute and relative paths consistently.
     """
 
-    def __init__(self, cache_file: Union[str, Path] = ".cache/checksum_cache.json", base_dir: Union[str, Path, None] = None):
+    def __init__(self, cache_file: Union[str, Path] = "checksum_cache.json", base_dir: Union[str, Path, None] = None):
         """
         Initialize the PyChecksumCache with a cache file to store checksums.
 

@@ -36,7 +36,7 @@ async def test_pychecksumcache_skipped():
     # See which files were processed
     for output_file, was_transformed in results:
         assert not was_transformed, f"Skipped (unchanged): {output_file}"
-    assert os.path.exists(".cache/checksum_cache.json") is True
+    assert os.path.exists("checksum_cache.json") is True
 
 @pytest.mark.asyncio
 async def test_pychecksumcache_transformed():
