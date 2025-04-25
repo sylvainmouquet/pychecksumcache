@@ -1,0 +1,63 @@
+name: Run Tests
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 10
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+    - name: Use uv with Python version
+      run: uv venv --python ${{ matrix.python-version }}
+      shell: bash
+    - name: Install dependencies
+      run: make install
+      shell: bash
+    - name: Build
+      env:
+        VERSION: 0.0.1
+      run: make build
+      shell: bash
+    - name: Run tests
+      run: |
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          # ifconfig
+          docker_ip=$(ip addr show docker0 | grep -Po 'inet \K[\d.]+')
+          echo "Docker IP: $docker_ip"
+          source .venv/bin/activate
+          sudo echo "$docker_ip host.docker.internal" | sudo tee -a /etc/hosts
+          ping -c 2 host.docker.internal
+
+          make test
+        fi
+        # elif [ "$RUNNER_OS" == "macOS" ]; then
+        #   # ifconfig
+        #   docker_ip=$(ifconfig en0 | awk '/inet / {print $2}')
+        #   echo "Docker IP: $docker_ip"
+
+        #   source .venv/bin/activate
+        #   sudo echo "$docker_ip host.docker.internal" | sudo tee -a /etc/hosts
+        #   ping -c 2 host.docker.internal
+          
+        #   find / -name docker.sock
+        #   DOCKER_SOCK=~/.docker/run/docker.sock make test
+        # elif [ "$RUNNER_OS" == "Windows" ]; then
+        #   # .\.venv\Scripts\activate
+        #   # $ipConfig = ipconfig | Select-String -Pattern 'IPv4 Address' | Select-Object -First 1
+        #   # $ipAddress = $ipConfig -split ':' | Select-Object -Last 1 | ForEach-Object { $_.Trim() }
+        #   # Add-Content -Path "$env:windir\System32\drivers\etc\hosts" -Value "$ipAddress host.docker.internal"
+        #   # Test-Connection -ComputerName host.docker.internal -Count 2
+        
+        #   make test
+        # fi
+        
+
+      shell: bash
+      env:
+        PYTHON_VERSION: ${{ matrix.python-version }}

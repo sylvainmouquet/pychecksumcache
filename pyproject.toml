@@ -1,0 +1,69 @@
+[project]
+name = "pychecksumcache"
+version = "0.0.1"
+description = "A lightweight Python library that uses MD5 checksums to track file changes and execute code only when files have been modified. PyChecksumCache maintains a persistent cache of file checksums, making it ideal for build systems, asset processors, incremental compilers, and any tools that need efficient change detection."
+authors = [{name = "Sylvain Mouquet", email = "sylvain.mouquet@gmail.com"}]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+license = { text = "MIT" }
+url = "https://github.com/sylvainmouquet/pychecksumcache"
+keywords = [
+    "python",
+    "md5",
+    "checksum",
+    "cache",
+    "file-monitoring",
+    "change-detection",
+    "build-tools",
+    "automation",
+    "incremental-processing",
+    "optimization",
+    "python3",
+    "hash",
+    "digest",
+    "development-tools",
+    "developer-tools",
+    "async"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Framework :: Pytest",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+
+[project.urls]
+homepage = "https://github.com/sylvainmouquet/pychecksumcache"
+documentation = "https://github.com/sylvainmouquet/pychecksumcache"
+repository = "https://github.com/sylvainmouquet/pychecksumcache"
+changelog = "https://github.com/sylvainmouquet/pychecksumcache/releases"
+
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = [
+    "loguru>=0.7.2",
+    "pip>=24.2",
+    "pytest-asyncio>=0.24.0",
+    "pytest-mock>=3.14.0",
+    "pytest>=8.3.3",
+    "ruff>=0.6.7",
+]
+
+[tool.uv.sources]
+pychecksumcache = { path = "pychecksumcache" }
+
+[project.entry-points.pytest11]
+pychecksumcache = "pychecksumcache"
