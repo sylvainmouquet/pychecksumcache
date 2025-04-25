@@ -11,7 +11,7 @@ formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(messag
 handler.setFormatter(formatter)
 
 input_files = ["tests/file1.txt", "tests/file2.txt"]
-output_folder = "output"
+output_folder = "tests/output"
 output_extension = ".generated.txt"
 
 

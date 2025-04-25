@@ -166,3 +166,5 @@ cython_debug/
 .terraform/
 *.tfstate
 .terraform.lock.hcl
+
+tests/output/
