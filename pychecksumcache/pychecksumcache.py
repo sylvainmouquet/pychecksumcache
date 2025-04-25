@@ -454,68 +454,124 @@ class PyChecksumCache:
     def transform(
         self,
         input_files: List[Union[str, Path]],
-        output_folder: Union[str, Path],
+        output_folder: Optional[Union[str, Path]] = None,
         output_extension: str = "",
-        transform_func: Callable[[str, str], Any] = None,
+        transform_func: Optional[Callable[[str, str], Any]] = None,
+        aggregate_output_file: Optional[Union[str, Path]] = None,
+        transform_func_aggregate: Optional[Callable[[List[str], str], Any]] = None,
         force: bool = False,
     ) -> List[Tuple[Path, bool]]:
         """
         Transform input files only if they've changed and save to output folder.
 
         Args:
-            input_files: List of input file paths to process (absolute or relative)
-            output_folder: Folder to save the transformed output (absolute or relative)
+            input_files: List of input file paths to process
+            output_folder: Folder to save the transformed output. Required unless aggregate_output_file is specified.
             output_extension: Optional extension to add/replace for output files
-            transform_func: Function that performs the transformation
+            transform_func: Function that transforms a single file
                            Should accept (input_path, output_path) as arguments
+            aggregate_output_file: Optional path for a single output file containing transformed content from all input files
+            transform_func_aggregate: Function that transforms multiple files into a single output
+                                 Should accept (input_paths, output_path) as arguments
             force: If True, process all files regardless of whether they've changed
 
         Returns:
             List of tuples containing (output_path, was_transformed)
         """
-        # Ensure output folder exists
-        output_path = self._normalize_path(output_folder)
-        output_path.mkdir(parents=True, exist_ok=True)
-
         results = []
 
-        # Default transformation function (copy file) if none provided
-        if transform_func is None:
-            transform_func = shutil.copy2
+        # Check if any files have changed
+        changed_files = []
+        unchanged_files = []
 
         for input_file in input_files:
-            input_path = self._normalize_path(input_file)
-
-            # Generate output filename
-            if output_extension:
-                if output_extension.startswith("."):
-                    # Replace extension
-                    output_filename = input_path.stem + output_extension
-                else:
-                    # Append to existing name
-                    output_filename = input_path.name + output_extension
+            if force or self.has_changed(input_file):
+                changed_files.append(self._normalize_path(input_file))
             else:
-                output_filename = input_path.name
+                unchanged_files.append(self._normalize_path(input_file))
 
-            output_file = output_path / output_filename
+        # Handle aggregate output if specified
+        if aggregate_output_file:
+            output_path = self._normalize_path(aggregate_output_file)
 
-            # Check if processing is needed
-            needs_processing = force or self.has_changed(input_path)
+            # Create the parent directory if it doesn't exist
+            output_path.parent.mkdir(parents=True, exist_ok=True)
 
-            if needs_processing:
-                # Perform the transformation
-                transform_func(str(input_path), str(output_file))
+            # Only process if there are changed files or we're forcing
+            was_transformed = bool(changed_files) or force
 
-            results.append((output_file, needs_processing))
+            if was_transformed:
+                # Use default function if none provided
+                if transform_func_aggregate is None:
+
+                    def default_transform_aggregate(input_paths, output_path):
+                        with open(output_path, "w") as outfile:
+                            for input_path in input_paths:
+                                with open(input_path, "r") as infile:
+                                    outfile.write(
+                                        f"--- {os.path.basename(input_path)} ---\n"
+                                    )
+                                    outfile.write(infile.read())
+                                    outfile.write("\n\n")
+
+                    transform_func_aggregate = default_transform_aggregate
+
+                # Apply the transformation
+                transform_func_aggregate(
+                    [str(f) for f in input_files], str(output_path)
+                )
+
+            results.append((output_path, was_transformed))
+
+        # Handle individual file transformations if output_folder is specified
+        elif output_folder:
+            output_path = self._normalize_path(output_folder)
+            output_path.mkdir(parents=True, exist_ok=True)
+
+            # Default transformation function (copy file) if none provided
+            if transform_func is None:
+                transform_func = shutil.copy2
+
+            for input_file in input_files:
+                input_path = self._normalize_path(input_file)
+
+                # Generate output filename
+                if output_extension:
+                    if output_extension.startswith("."):
+                        # Replace extension
+                        output_filename = input_path.stem + output_extension
+                    else:
+                        # Append to existing name
+                        output_filename = input_path.name + output_extension
+                else:
+                    output_filename = input_path.name
+
+                output_file = output_path / output_filename
+
+                # Check if this file changed
+                needs_processing = input_path in changed_files or force
+
+                if needs_processing:
+                    # Perform the transformation
+                    transform_func(str(input_path), str(output_file))
+
+                results.append((output_file, needs_processing))
+
+        else:
+            raise ValueError(
+                "Either output_folder or aggregate_output_file must be specified"
+            )
 
         return results
 
     async def transform_async(
         self,
         input_files: List[Union[str, Path]],
-        output_folder: Union[str, Path],
+        output_folder: Optional[Union[str, Path]] = None,
         output_extension: str = "",
-        transform_func: Callable[[str, str], Any] = None,
+        transform_func: Optional[Callable[[str, str], Any]] = None,
+        aggregate_output_file: Optional[Union[str, Path]] = None,
+        transform_func_aggregate: Optional[Callable[[List[str], str], Any]] = None,
         force: bool = False,
         concurrency_limit: int = 10,
     ) -> List[Tuple[Path, bool]]:
@@ -523,68 +579,141 @@ class PyChecksumCache:
         Transform input files asynchronously only if they've changed and save to output folder.
 
         Args:
-            input_files: List of input file paths to process (absolute or relative)
-            output_folder: Folder to save the transformed output (absolute or relative)
+            input_files: List of input file paths to process
+            output_folder: Folder to save the transformed output. Required unless aggregate_output_file is specified.
             output_extension: Optional extension to add/replace for output files
-            transform_func: Function or coroutine that performs the transformation
+            transform_func: Function or coroutine that transforms a single file
                            Should accept (input_path, output_path) as arguments
+            aggregate_output_file: Optional path for a single output file containing transformed content from all input files
+            transform_func_aggregate: Function or coroutine that transforms multiple files into a single output
+                                 Should accept (input_paths, output_path) as arguments
             force: If True, process all files regardless of whether they've changed
             concurrency_limit: Maximum number of concurrent transformations
 
         Returns:
             List of tuples containing (output_path, was_transformed)
         """
-        # Ensure output folder exists
-        output_path = self._normalize_path(output_folder)
-        output_path.mkdir(parents=True, exist_ok=True)
 
-        # Default transformation function (copy file) if none provided
-        if transform_func is None:
-            transform_func = shutil.copy2
+        # Check if any files have changed asynchronously
+        async def check_file(file_path):
+            file_path = self._normalize_path(file_path)
+            if force or await self.has_changed_async(file_path):
+                return (file_path, True)
+            return (file_path, False)
 
-        # Create a semaphore to limit concurrency
-        semaphore = asyncio.Semaphore(concurrency_limit)
+        # Create tasks for all files to check changes
+        change_tasks = [check_file(file_path) for file_path in input_files]
+        check_results = await asyncio.gather(*change_tasks)
 
-        # Process files with concurrency limit
-        async def process_file(input_file):
-            input_path = self._normalize_path(input_file)
+        # Separate changed and unchanged files
+        changed_files = [path for path, changed in check_results if changed]
+        # unchanged_files = [path for path, changed in check_results if not changed]
 
-            # Generate output filename
-            if output_extension:
-                if output_extension.startswith("."):
-                    # Replace extension
-                    output_filename = input_path.stem + output_extension
+        results = []
+
+        # Handle aggregate output if specified
+        if aggregate_output_file:
+            output_path = self._normalize_path(aggregate_output_file)
+
+            # Create the parent directory if it doesn't exist
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Only process if there are changed files or we're forcing
+            was_transformed = bool(changed_files) or force
+
+            if was_transformed:
+                # Use default function if none provided
+                if transform_func_aggregate is None:
+
+                    async def default_transform_aggregate(input_paths, output_path):
+                        with open(output_path, "w") as outfile:
+                            for input_path in input_paths:
+                                with open(input_path, "r") as infile:
+                                    outfile.write(
+                                        f"--- {os.path.basename(input_path)} ---\n"
+                                    )
+                                    outfile.write(infile.read())
+                                    outfile.write("\n\n")
+
+                    transform_func_aggregate = default_transform_aggregate
+
+                # Apply the transformation
+                if asyncio.iscoroutinefunction(transform_func_aggregate):
+                    await transform_func_aggregate(
+                        [str(f) for f in input_files], str(output_path)
+                    )
                 else:
-                    # Append to existing name
-                    output_filename = input_path.name + output_extension
-            else:
-                output_filename = input_path.name
+                    # Run sync function in executor
+                    loop = asyncio.get_event_loop()
+                    await loop.run_in_executor(
+                        None,
+                        lambda: transform_func_aggregate(
+                            [str(f) for f in input_files], str(output_path)
+                        ),
+                    )
 
-            output_file = output_path / output_filename
+            results.append((output_path, was_transformed))
 
-            # Check if processing is needed
-            needs_processing = force or await self.has_changed_async(input_path)
+        # Handle individual file transformations if output_folder is specified
+        elif output_folder:
+            output_path = self._normalize_path(output_folder)
+            output_path.mkdir(parents=True, exist_ok=True)
 
-            if needs_processing:
-                # Acquire semaphore to limit concurrency
-                async with semaphore:
-                    # Perform the transformation
-                    if asyncio.iscoroutinefunction(transform_func):
-                        await transform_func(str(input_path), str(output_file))
+            # Default transformation function (copy file) if none provided
+            if transform_func is None:
+                transform_func = shutil.copy2
+
+            # Create a semaphore to limit concurrency
+            semaphore = asyncio.Semaphore(concurrency_limit)
+
+            # Process files with concurrency limit
+            async def process_file(input_file):
+                input_path = self._normalize_path(input_file)
+
+                # Generate output filename
+                if output_extension:
+                    if output_extension.startswith("."):
+                        # Replace extension
+                        output_filename = input_path.stem + output_extension
                     else:
-                        # Run synchronous function in executor
-                        loop = asyncio.get_event_loop()
-                        await loop.run_in_executor(
-                            None,
-                            lambda: transform_func(str(input_path), str(output_file)),
-                        )
+                        # Append to existing name
+                        output_filename = input_path.name + output_extension
+                else:
+                    output_filename = input_path.name
 
-            return (output_file, needs_processing)
+                output_file = output_path / output_filename
 
-        # Create tasks for all files
-        tasks = [process_file(input_file) for input_file in input_files]
+                # Check if this file changed
+                needs_processing = input_path in changed_files or force
 
-        # Wait for all tasks to complete
-        results = await asyncio.gather(*tasks)
+                if needs_processing:
+                    # Acquire semaphore to limit concurrency
+                    async with semaphore:
+                        # Perform the transformation
+                        if asyncio.iscoroutinefunction(transform_func):
+                            await transform_func(str(input_path), str(output_file))
+                        else:
+                            # Run synchronous function in executor
+                            loop = asyncio.get_event_loop()
+                            await loop.run_in_executor(
+                                None,
+                                lambda: transform_func(
+                                    str(input_path), str(output_file)
+                                ),
+                            )
+
+                return (output_file, needs_processing)
+
+            # Create tasks for all files
+            tasks = [process_file(input_file) for input_file in input_files]
+
+            # Wait for all tasks to complete
+            file_results = await asyncio.gather(*tasks)
+            results.extend(file_results)
+
+        else:
+            raise ValueError(
+                "Either output_folder or aggregate_output_file must be specified"
+            )
 
         return results
